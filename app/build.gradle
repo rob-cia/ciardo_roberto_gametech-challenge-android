@@ -36,3 +36,33 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }
+
+tasks.register("copyAarToUnity") {
+    dependsOn("assembleDebug")
+
+    doLast {
+        def aarSource = file("C:/Users/Roberto/Desktop/MiniclipChallengeRepo/ciardo_roberto_gametech-challenge-android/ciardo_roberto_gametech-challenge-android/build/outputs/aar/ciardo_roberto_gametech-challenge-android-debug.aar")
+        def unityDestinationDir = file("C:/Users/Roberto/Desktop/MiniclipChallengeRepo/ciardo_roberto_gametech-challenge-unity/Assets/Plugins/Android")
+
+        if (aarSource.exists()) {
+            if (!unityDestinationDir.exists()) {
+                unityDestinationDir.mkdirs()
+            }
+
+            def destinationFile = new File(unityDestinationDir, aarSource.name)
+            aarSource.withInputStream { input ->
+                destinationFile.withOutputStream { output ->
+                    output << input
+                }
+            }
+
+            println(".aar file successfully copied to ${destinationFile}")
+        } else {
+            println(".aar file not found: ${aarSource}")
+        }
+    }
+}
+
+tasks.named("build") {
+    finalizedBy("copyAarToUnity")
+}
