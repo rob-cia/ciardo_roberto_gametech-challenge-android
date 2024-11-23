@@ -12,7 +12,7 @@ public class NotificationPlugin {
     private static final String TAG = "NotificationPlugin";
     private static final int NOTIFICATION_ID_BASE = 1000;
     private static final int NOTIFICATION_COUNT = 5;
-    private static final long INTERVAL_MS = 10 * 1000;
+    private static final long INTERVAL_MS = 60 * 1000;
 
     private static final String[] TITLES = {
             "Notification 1",
