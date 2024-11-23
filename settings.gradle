@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ciardo_roberto_gametech-challenge-android"
 include ':app'
+include ':ciardo_roberto_gametech-challenge-android'
