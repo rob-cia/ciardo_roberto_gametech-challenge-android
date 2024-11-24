@@ -12,7 +12,7 @@ public class NotificationPlugin {
     private static final String TAG = "NotificationPlugin";
     private static final int NOTIFICATION_ID_BASE = 1000;
     private static final int NOTIFICATION_COUNT = 5;
-    private static final long INTERVAL_MS = 60 * 1000;
+    private static final long INTERVAL_MS = 5 * 1000;
 
     private static final String[] TITLES = {
             "Notification 1",
@@ -65,6 +65,28 @@ public class NotificationPlugin {
             alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerTime, pendingIntent);
 
             Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTime);
+        }
+    }
+
+    public static void removeNotifications(Context context) {
+        Log.d(TAG, "removeNotifications: Cancelling all notifications...");
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            Log.e(TAG, "removeNotifications: AlarmManager is null!");
+            return;
+        }
+
+        for (int i = 0; i < NOTIFICATION_COUNT; i++) {
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    NOTIFICATION_ID_BASE + i,
+                    new Intent(context, NotificationReceiver.class),
+                    PendingIntent.FLAG_IMMUTABLE
+            );
+
+            alarmManager.cancel(pendingIntent);
+            Log.d(TAG, "removeNotifications: Cancelled notification ID " + (NOTIFICATION_ID_BASE + i));
         }
     }
 }
