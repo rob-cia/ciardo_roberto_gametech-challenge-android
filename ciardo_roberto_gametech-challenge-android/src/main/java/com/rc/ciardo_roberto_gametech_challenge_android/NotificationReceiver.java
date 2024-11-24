@@ -2,7 +2,9 @@ package com.rc.ciardo_roberto_gametech_challenge_android;
 
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -29,6 +31,8 @@ public class NotificationReceiver extends BroadcastReceiver {
             return;
         }
 
+        Log.d(TAG_RECEIVER, "onReceive: icon... " + icon);
+
         Notification notification;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -37,6 +41,7 @@ public class NotificationReceiver extends BroadcastReceiver {
                     .setContentTitle(title)
                     .setContentText(description)
                     .setSmallIcon(icon)
+                    .setContentIntent(createContentIntent(context, notificationId, title, description, icon))
                     .build();
         } else {
             // For API < 26, use the old constructor
@@ -44,6 +49,7 @@ public class NotificationReceiver extends BroadcastReceiver {
                     .setContentTitle(title)
                     .setContentText(description)
                     .setSmallIcon(icon)
+                    .setContentIntent(createContentIntent(context, notificationId, title, description, icon))
                     .setPriority(Notification.PRIORITY_DEFAULT)
                     .build();
         }
@@ -52,5 +58,22 @@ public class NotificationReceiver extends BroadcastReceiver {
         notificationManager.notify(notificationId, notification);
 
         Log.d(TAG_RECEIVER, "onReceive: Notification sent successfully. ID: " + notificationId);
+    }
+
+    private PendingIntent createContentIntent(Context context, int notificationId, String title, String description, int icon) {
+        Intent intent = new Intent();
+
+        intent.setComponent(new ComponentName("com.Miniclip.ciardo_roberto_gametechchallengeunity", "com.unity3d.player.UnityPlayerActivity"));
+        intent.putExtra("notificationId", String.valueOf(notificationId));
+        intent.putExtra("title", title);
+        intent.putExtra("description", description);
+        intent.putExtra("icon", String.valueOf(icon));
+
+        return PendingIntent.getActivity(
+                context,
+                notificationId,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE
+        );
     }
 }
