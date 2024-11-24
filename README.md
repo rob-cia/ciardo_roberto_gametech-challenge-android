@@ -6,7 +6,10 @@ This plugin enables the scheduling and delivery of push notifications on Android
 ---
 
 ## Features
-### **Notification Scheduling**
+
+### *TAG: Android-Schedule-Notifications*
+
+#### **Notification Scheduling**
 - **Method**: `scheduleNotifications(Context context)`
 - **Description**: 
   Schedules 5 notifications to be delivered at one-minute intervals.
@@ -19,13 +22,23 @@ This plugin enables the scheduling and delivery of push notifications on Android
     - Title, description, and icon data.
   - Notifications are sent using a `PendingIntent` and handled by `NotificationReceiver`.
 
-### **Notification Receiver: On Receive**
+#### **Notification Receiver: On Receive**
 - **Method**: `onReceive(Context context, Intent intent)`
 - **Description**: Processes incoming alarm intents and displays the corresponding notification.
 - **Details**:
   - Retrieves notification ID, title, description, and icon from the `Intent`.
   - Uses `NotificationManager` to send the notification.
   - Supports Android API 26+ using `NotificationChannel`, while retaining backward compatibility for lower APIs.
+
+### *TAG: Android-Remove-Notifications*
+
+#### **Remove Notifications**
+- **Method**: `removeNotifications(Context context)`
+- **Description**: Cancels all scheduled notifications.
+- **Details**:
+  - Utilizes `AlarmManager` to cancel pending alarms.
+  - Cancels notifications based on their unique IDs (`NOTIFICATION_ID_BASE` and increments).
+  - Ensures clean removal of all pending intents to avoid unintended notifications.
 
 ---
 
