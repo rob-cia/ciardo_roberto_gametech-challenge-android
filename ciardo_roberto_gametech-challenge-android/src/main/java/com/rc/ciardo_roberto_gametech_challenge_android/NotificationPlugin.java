@@ -59,7 +59,7 @@ public class NotificationPlugin {
             intent.putExtra("notificationId", NOTIFICATION_ID_BASE + i);
             intent.putExtra("title", TITLES[i]);
             intent.putExtra("description", DESCRIPTIONS[i]);
-            intent.putExtra("icon", ICONS[i]);
+            intent.putExtra("icon", i);
 
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     context,
@@ -115,6 +115,17 @@ public class NotificationPlugin {
 
             alarmManager.cancel(pendingIntent);
             Log.d(TAG, "removeNotifications: Cancelled notification ID " + (NOTIFICATION_ID_BASE + i));
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Log.d(TAG, "removeNotifications: Deleting notification channel...");
+            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager != null) {
+                notificationManager.deleteNotificationChannel(CHANNEL_ID);
+                Log.d(TAG, "removeNotifications: Notification channel deleted.");
+            } else {
+                Log.e(TAG, "removeNotifications: NotificationManager is null!");
+            }
         }
     }
 }

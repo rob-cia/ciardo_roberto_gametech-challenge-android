@@ -10,10 +10,21 @@ import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class NotificationReceiver extends BroadcastReceiver {
     private static final int NOTIFICATION_ID_BASE = 1000;
     private static final String CHANNEL_ID = "NotificationChannel";
     private static final String TAG_RECEIVER = "NotificationReceiver";
+
+    private static final Map<Integer, Integer> CUSTOM_ICONS = new HashMap<Integer, Integer>() {{
+        put(0, R.drawable.icon1);
+        put(1, R.drawable.icon2);
+        put(2, R.drawable.icon3);
+        put(3, R.drawable.icon4);
+        put(4, R.drawable.icon5);
+    }};
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -23,7 +34,7 @@ public class NotificationReceiver extends BroadcastReceiver {
         int notificationId = intent.getIntExtra("notificationId", NOTIFICATION_ID_BASE);
         String title = intent.getStringExtra("title");
         String description = intent.getStringExtra("description");
-        int icon = intent.getIntExtra("icon", android.R.drawable.ic_notification_overlay);
+        int icon = intent.getIntExtra("icon", 0);
 
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (notificationManager == null) {
@@ -40,7 +51,7 @@ public class NotificationReceiver extends BroadcastReceiver {
             notification = new Notification.Builder(context, CHANNEL_ID)
                     .setContentTitle(title)
                     .setContentText(description)
-                    .setSmallIcon(icon)
+                    .setSmallIcon(CUSTOM_ICONS.get(icon))
                     .setContentIntent(createContentIntent(context, notificationId, title, description, icon))
                     .build();
         } else {
@@ -48,7 +59,7 @@ public class NotificationReceiver extends BroadcastReceiver {
             notification = new Notification.Builder(context)
                     .setContentTitle(title)
                     .setContentText(description)
-                    .setSmallIcon(icon)
+                    .setSmallIcon(CUSTOM_ICONS.get(icon))
                     .setContentIntent(createContentIntent(context, notificationId, title, description, icon))
                     .setPriority(Notification.PRIORITY_DEFAULT)
                     .build();
