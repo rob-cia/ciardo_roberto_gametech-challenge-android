@@ -53,6 +53,7 @@ public class NotificationReceiver extends BroadcastReceiver {
                     .setContentText(description)
                     .setSmallIcon(CUSTOM_ICONS.get(icon))
                     .setContentIntent(createContentIntent(context, notificationId, title, description, icon))
+                    .setAutoCancel(true)
                     .build();
         } else {
             // For API < 26, use the old constructor
@@ -62,6 +63,7 @@ public class NotificationReceiver extends BroadcastReceiver {
                     .setSmallIcon(CUSTOM_ICONS.get(icon))
                     .setContentIntent(createContentIntent(context, notificationId, title, description, icon))
                     .setPriority(Notification.PRIORITY_DEFAULT)
+                    .setAutoCancel(true)
                     .build();
         }
 
