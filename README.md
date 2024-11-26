@@ -77,6 +77,76 @@ This plugin enables the scheduling and delivery of push notifications on Android
   - If `NotificationManager` is null, logs an error message.
   - Ensures that the channel is properly created to handle notifications on compatible devices.
 
+### *TAG: Android-List-Scheduled-Notifications*
+
+#### **On Startup**
+- **Method**: `onStartup(Context context)`
+- **Description**: 
+  Updates the state of scheduled notifications when the Unity app is opened or change application focus.
+- **Details**:
+  - Retrieves the notification list from `SharedPreferences` using the key `SCHEDULED_NOTIFICATIONS_KEY`.
+  - Marks notifications with expired `triggerTime` as `"cancelled"`.
+  - Preserves the state of notifications still valid.
+  - Saves the updated notification list back to `SharedPreferences` for consistency.
+ 
+### *TAG: Unity-Save-Scheduled-Notification*
+
+#### **Save Scheduled Notification**
+- **Method**: `saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime, String status)`
+- **Description**: 
+  Saves or updates a scheduled notification in `SharedPreferences`.
+- **Parameters**:
+  - `Context context`: The application context for accessing shared preferences.
+  - `int notificationId`: The unique identifier for the notification.
+  - `String title`: The title of the notification.
+  - `String description`: The description of the notification.
+  - `int iconId`: The ID of the notification icon.
+  - `long triggerTime`: The time at which the notification is scheduled to trigger.
+  - `String status`: The current status of the notification (e.g., `"running"` or `"cancelled"`).
+- **Details**:
+  - Retrieves the current list of scheduled notifications from `SharedPreferences` using the key `SCHEDULED_NOTIFICATIONS_KEY`.
+  - If the notification already exists, updates its details (title, description, icon, trigger time, and status).
+  - If the notification is new, appends it to the list of scheduled notifications.
+  - Saves the updated list back into `SharedPreferences` for persistence.
+  - Ensures proper formatting of the notification data, logging any errors encountered during parsing.
+
+#### **Save Remove Notifications**
+- **Method**: `saveRemoveNotifications(Context context, int notificationId, String status)`
+- **Description**: 
+  Updates the status of a specific notification in `SharedPreferences` to mark it as removed.
+- **Parameters**:
+  - `Context context`: The application context for accessing shared preferences.
+  - `int notificationId`: The unique identifier for the notification to update.
+  - `String status`: The new status of the notification (e.g., `"cancelled"`).
+- **Details**:
+  - Retrieves the list of scheduled notifications from `SharedPreferences` using the key `SCHEDULED_NOTIFICATIONS_KEY`.
+  - Iterates through the notification list to find the notification with the matching `notificationId`.
+  - Updates the `status` field of the matched notification.
+  - Reconstructs the notification list with the updated status and saves it back into `SharedPreferences`.
+
+#### **Check If App Is Running**
+- **Method**: `isAppInForeground(Context context, String packageName)`
+- **Description**: 
+  Determines if a specific app, identified by its package name, is currently running in the foreground.
+- **Parameters**:
+  - `Context context`: The application context for accessing system services.
+  - `String packageName`: The package name of the app to check.
+- **Returns**: 
+  - `boolean`: `true` if the app is running in the foreground, `false` otherwise.
+
+#### **FIX: Notification Scheduling with RTC_WAKEUP and Current Time**
+- **Details**:
+  - Adjusted the scheduling logic to use `System.currentTimeMillis()` instead of `SystemClock.elapsedRealtime()` for determining the `triggerTime`.
+    - **Previous Implementation**: Used `SystemClock.elapsedRealtime()` with `AlarmManager.ELAPSED_REALTIME_WAKEUP`.
+    - **Updated Implementation**: Uses `System.currentTimeMillis()` with `AlarmManager.RTC_WAKEUP`.
+  - Ensures the notification is scheduled based on real-world time rather than device uptime.
+  - Enabled the `setExactAndAllowWhileIdle` method to ensure notifications are triggered even during low-power idle modes, enhancing reliability on modern Android devices.
+ 
+#### **Fix: Avoid AlarmManager Cancellation**
+- **Details**:
+  - Commented out the logic to cancel scheduled notifications using `AlarmManager.cancel(PendingIntent)` for improved compatibility and reliability.
+    - **Previous Implementation**: Used `PendingIntent.getBroadcast()` and `AlarmManager.cancel()` to remove scheduled alarms for notifications.
+    - **Current Fix**: Instead of directly cancelling alarms, the system updates the notification status using the `saveRemoveNotifications` method, marking them as `"cancelled"` in the `SharedPreferences`.
 
 ---
 
