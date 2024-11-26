@@ -81,7 +81,7 @@ public class NotificationPlugin {
             Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTime);
 
             // unity-list-scheduled-notification: save the scheduled notification in the SharedPreferences
-            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], i, triggerTimeU);
+            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], i, triggerTimeU, "running");
         }
     }
 
@@ -125,6 +125,8 @@ public class NotificationPlugin {
 
             alarmManager.cancel(pendingIntent);
             Log.d(TAG, "removeNotifications: Cancelled notification ID " + (NOTIFICATION_ID_BASE + i));
+
+            saveRemoveNotifications(context, NOTIFICATION_ID_BASE + i, "cancelled");
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -141,7 +143,7 @@ public class NotificationPlugin {
 
 
     // unity-list-scheduled-notification
-    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime) {
+    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime, String status) {
         Log.d(TAG, "Preparing to save schedule notification..");
 
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -167,6 +169,7 @@ public class NotificationPlugin {
                         parts[2] = description;
                         parts[3] = String.valueOf(iconId);
                         parts[4] = String.valueOf(triggerTime);
+                        parts[5] = status;
                         notification = String.join(":", parts);
                         notificationFound = true;
                     }
@@ -186,19 +189,49 @@ public class NotificationPlugin {
                     updatedNotifications.append(";");
                 }
                 Log.d(TAG, "Add notification " + notificationId + " - len (" + updatedNotifications.length() + ")");
-                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime);
+                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime + ":" + status);
             }
 
             // Update notification list
             scheduledNotifications = updatedNotifications.toString();
         } else {
             Log.d(TAG, "Add first notification " + notificationId);
-            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime;
+            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime + ":" + status;
         }
 
         // Save the new scheduled notification list
         editor.putString(SCHEDULED_NOTIFICATIONS_KEY, scheduledNotifications);
         editor.apply();
+    }
+
+    private static void saveRemoveNotifications(Context context, int notificationId, String status) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (!scheduledNotifications.isEmpty()) {
+            String[] notifications = scheduledNotifications.split(";");
+            StringBuilder updatedNotifications = new StringBuilder();
+
+            for (String notification : notifications) {
+                String[] parts = notification.split(":");
+                int storedNotificationId = Integer.parseInt(parts[0]);
+
+                if (storedNotificationId == notificationId) {
+                    parts[5] = status;
+                    notification = String.join(":", parts);
+                }
+
+                if (updatedNotifications.length() > 0) {
+                    updatedNotifications.append(";");
+                }
+                updatedNotifications.append(notification);
+            }
+
+            editor.putString(SCHEDULED_NOTIFICATIONS_KEY, updatedNotifications.toString());
+            editor.apply();
+        }
     }
 
     public static String[] getScheduledNotifications(Context context) {
