@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
@@ -15,7 +16,7 @@ public class NotificationPlugin {
     private static final String TAG = "NotificationPlugin";
     private static final int NOTIFICATION_ID_BASE = 1000;
     private static final int NOTIFICATION_COUNT = 5;
-    private static final long INTERVAL_MS = 60 * 1000;
+    private static final long INTERVAL_MS = 10 * 1000;
     private static final String CHANNEL_ID = "NotificationChannel";
     private static final String CHANNEL_NAME = "Scheduled Notifications";
 
@@ -43,6 +44,11 @@ public class NotificationPlugin {
             android.R.drawable.ic_menu_info_details
     };
 
+    // unity-list-scheduled-notification
+    private static final String PREFS_NAME = "NotificationPrefs";
+    private static final String SCHEDULED_NOTIFICATIONS_KEY = "ScheduledNotifications";
+
+
     public static void scheduleNotifications(Context context) {
         Log.d(TAG, "scheduleNotifications: Scheduling " + NOTIFICATION_COUNT + " notifications...");
 
@@ -69,9 +75,13 @@ public class NotificationPlugin {
             );
 
             long triggerTime = SystemClock.elapsedRealtime() + ((i+1) * INTERVAL_MS);
+            long triggerTimeU = System.currentTimeMillis() + ((i+1) * INTERVAL_MS);
             alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerTime, pendingIntent);
 
             Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTime);
+
+            // unity-list-scheduled-notification: save the scheduled notification in the SharedPreferences
+            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], triggerTimeU);
         }
     }
 
@@ -127,5 +137,77 @@ public class NotificationPlugin {
                 Log.e(TAG, "removeNotifications: NotificationManager is null!");
             }
         }
+    }
+
+
+    // unity-list-scheduled-notification
+    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, long triggerTime) {
+        Log.d(TAG, "Preparing to save schedule notification..");
+
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (!scheduledNotifications.isEmpty()) {
+            String[] notifications = scheduledNotifications.split(";");
+            boolean notificationFound = false;
+
+            StringBuilder updatedNotifications = new StringBuilder();
+
+            Log.d(TAG, "Searching notification to update..");
+            for (String notification : notifications) {
+                String[] parts = notification.split(":");
+                try {
+                    int storedNotificationId = Integer.parseInt(parts[0]);
+
+                    if (storedNotificationId == notificationId) {
+                        Log.d(TAG, "Notification " + notificationId + " already present, update starting");
+                        parts[1] = title;
+                        parts[2] = description;
+                        parts[3] = String.valueOf(triggerTime);
+                        notification = String.join(":", parts);
+                        notificationFound = true;
+                    }
+                } catch (Exception e) {
+                    Log.e("NotificationManager", "Format Error with: " + notification, e);
+                }
+
+
+                if (updatedNotifications.length() > 0) {
+                    updatedNotifications.append(";");
+                }
+                updatedNotifications.append(notification);
+            }
+
+            if (!notificationFound) {
+                if (updatedNotifications.length() > 0) {
+                    updatedNotifications.append(";");
+                }
+                Log.d(TAG, "Add notification " + notificationId + " - len (" + updatedNotifications.length() + ")");
+                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + triggerTime);
+            }
+
+            // Update notification list
+            scheduledNotifications = updatedNotifications.toString();
+        } else {
+            Log.d(TAG, "Add first notification " + notificationId);
+            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + triggerTime;
+        }
+
+        // Save the new scheduled notification list
+        editor.putString(SCHEDULED_NOTIFICATIONS_KEY, scheduledNotifications);
+        editor.apply();
+    }
+
+    public static String[] getScheduledNotifications(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (scheduledNotifications.isEmpty()) {
+            return new String[0];
+        }
+
+        return scheduledNotifications.split(";");
     }
 }
