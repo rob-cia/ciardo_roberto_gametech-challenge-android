@@ -1,5 +1,6 @@
 package com.rc.ciardo_roberto_gametech_challenge_android;
 
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -71,6 +72,40 @@ public class NotificationReceiver extends BroadcastReceiver {
         notificationManager.notify(notificationId, notification);
 
         Log.d(TAG_RECEIVER, "onReceive: Notification sent successfully. ID: " + notificationId);
+
+        // unity-list-scheduled-notification : Check if the app is running
+        boolean isAppRunning = isAppInForeground(context, "com.Miniclip.ciardo_roberto_gametechchallengeunity");
+        Log.d(TAG_RECEIVER, "onReceive: Is app running? " + isAppRunning);
+
+        if (isAppRunning) {
+            NotificationPlugin.saveRemoveNotifications(context, notificationId, "cancelled");
+        }
+    }
+
+    // unity-list-scheduled-notification : Check if the app is running
+    private boolean isAppInForeground(Context context, String packageName) {
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (activityManager == null) {
+            Log.e(TAG_RECEIVER, "isAppInForeground: ActivityManager is null!");
+            return false;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            for (ActivityManager.RunningAppProcessInfo processInfo : activityManager.getRunningAppProcesses()) {
+                if (processInfo.processName.equals(packageName) &&
+                        processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                    return true;
+                }
+            }
+        } else {
+            for (ActivityManager.RunningTaskInfo task : activityManager.getRunningTasks(1)) {
+                if (task.topActivity.getPackageName().equals(packageName)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private PendingIntent createContentIntent(Context context, int notificationId, String title, String description, int icon) {

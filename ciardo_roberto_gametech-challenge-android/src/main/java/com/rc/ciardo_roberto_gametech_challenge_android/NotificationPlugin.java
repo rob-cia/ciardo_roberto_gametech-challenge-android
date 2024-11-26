@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.os.SystemClock;
 import android.util.Log;
 
 public class NotificationPlugin {
@@ -74,11 +73,15 @@ public class NotificationPlugin {
                     PendingIntent.FLAG_IMMUTABLE // Android 12+
             );
 
-            long triggerTime = SystemClock.elapsedRealtime() + ((i+1) * INTERVAL_MS);
+            // unity-list-scheduled-notification: use the currentTimeMillis to schedule notification
             long triggerTimeU = System.currentTimeMillis() + ((i+1) * INTERVAL_MS);
-            alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerTime, pendingIntent);
+            //long triggerTime = SystemClock.elapsedRealtime() + ((i+1) * INTERVAL_MS);
 
-            Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTime);
+            // unity-list-scheduled-notification: allowed to execute even when the system is in low-power idle modes
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTimeU, pendingIntent);
+            //alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerTime, pendingIntent);
+
+            Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTimeU);
 
             // unity-list-scheduled-notification: save the scheduled notification in the SharedPreferences
             saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], i, triggerTimeU, "running");
@@ -116,14 +119,14 @@ public class NotificationPlugin {
         }
 
         for (int i = 0; i < NOTIFICATION_COUNT; i++) {
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            /*PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     context,
                     NOTIFICATION_ID_BASE + i,
                     new Intent(context, NotificationReceiver.class),
                     PendingIntent.FLAG_IMMUTABLE
             );
 
-            alarmManager.cancel(pendingIntent);
+            alarmManager.cancel(pendingIntent);*/
             Log.d(TAG, "removeNotifications: Cancelled notification ID " + (NOTIFICATION_ID_BASE + i));
 
             saveRemoveNotifications(context, NOTIFICATION_ID_BASE + i, "cancelled");
@@ -142,7 +145,44 @@ public class NotificationPlugin {
     }
 
 
-    // unity-list-scheduled-notification
+    // unity-list-scheduled-notification : called by Unity when the app is opened
+    private static void onStartup(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (!scheduledNotifications.isEmpty()) {
+            String[] notifications = scheduledNotifications.split(";");
+
+            StringBuilder updatedNotifications = new StringBuilder();
+
+            Log.d(TAG, "startup: Searching notification to update..");
+            for (String notification : notifications) {
+                String[] parts = notification.split(":");
+
+                long triggerTime = Long.parseLong(parts[4]);
+
+                if (triggerTime <= System.currentTimeMillis()) {
+                    parts[5] = "cancelled";
+                    notification = String.join(":", parts);
+                }
+
+                if (updatedNotifications.length() > 0) {
+                    updatedNotifications.append(";");
+                }
+                updatedNotifications.append(notification);
+            }
+
+            // Update notification list
+            scheduledNotifications = updatedNotifications.toString();
+        }
+
+        // Save the new scheduled notification list
+        editor.putString(SCHEDULED_NOTIFICATIONS_KEY, scheduledNotifications);
+        editor.apply();
+    }
+
     private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime, String status) {
         Log.d(TAG, "Preparing to save schedule notification..");
 
@@ -204,7 +244,7 @@ public class NotificationPlugin {
         editor.apply();
     }
 
-    private static void saveRemoveNotifications(Context context, int notificationId, String status) {
+    public static void saveRemoveNotifications(Context context, int notificationId, String status) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
 
