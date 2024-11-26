@@ -81,7 +81,7 @@ public class NotificationPlugin {
             Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTime);
 
             // unity-list-scheduled-notification: save the scheduled notification in the SharedPreferences
-            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], triggerTimeU);
+            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], i, triggerTimeU);
         }
     }
 
@@ -141,7 +141,7 @@ public class NotificationPlugin {
 
 
     // unity-list-scheduled-notification
-    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, long triggerTime) {
+    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime) {
         Log.d(TAG, "Preparing to save schedule notification..");
 
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -165,7 +165,8 @@ public class NotificationPlugin {
                         Log.d(TAG, "Notification " + notificationId + " already present, update starting");
                         parts[1] = title;
                         parts[2] = description;
-                        parts[3] = String.valueOf(triggerTime);
+                        parts[3] = String.valueOf(iconId);
+                        parts[4] = String.valueOf(triggerTime);
                         notification = String.join(":", parts);
                         notificationFound = true;
                     }
@@ -185,14 +186,14 @@ public class NotificationPlugin {
                     updatedNotifications.append(";");
                 }
                 Log.d(TAG, "Add notification " + notificationId + " - len (" + updatedNotifications.length() + ")");
-                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + triggerTime);
+                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime);
             }
 
             // Update notification list
             scheduledNotifications = updatedNotifications.toString();
         } else {
             Log.d(TAG, "Add first notification " + notificationId);
-            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + triggerTime;
+            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime;
         }
 
         // Save the new scheduled notification list
