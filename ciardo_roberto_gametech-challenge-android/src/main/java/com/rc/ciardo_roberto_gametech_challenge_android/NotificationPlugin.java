@@ -15,7 +15,7 @@ public class NotificationPlugin {
     private static final String TAG = "NotificationPlugin";
     private static final int NOTIFICATION_ID_BASE = 1000;
     private static final int NOTIFICATION_COUNT = 5;
-    private static final long INTERVAL_MS = 60 * 1000;
+    private static final long INTERVAL_MS = 10 * 1000;
     private static final String CHANNEL_ID = "NotificationChannel";
     private static final String CHANNEL_NAME = "Scheduled Notifications";
 
@@ -284,4 +284,44 @@ public class NotificationPlugin {
 
         return scheduledNotifications.split(";");
     }
+
+    // android-remove-scheduled-notification
+    public static void removeNotificationById(Context context, int notificationId) {
+        Log.d(TAG, "removeNotificationById: Attempting to remove notification with ID " + notificationId);
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            Log.e(TAG, "removeNotificationById: AlarmManager is null!");
+            return;
+        }
+
+        Intent intent = new Intent(context, NotificationReceiver.class);
+        intent.putExtra("notificationId", notificationId);
+
+        String[] notifications = getScheduledNotifications(context);
+        for (String notification : notifications) {
+            String[] parts = notification.split(":");
+            int storedNotificationId = Integer.parseInt(parts[0]);
+
+            if (storedNotificationId == notificationId) {
+                intent.putExtra("title", parts[1]);
+                intent.putExtra("description", parts[2]);
+                intent.putExtra("icon", Integer.parseInt(parts[3]));
+                break;
+            }
+        }
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                notificationId,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE
+        );
+
+        alarmManager.cancel(pendingIntent);
+        Log.d(TAG, "removeNotificationById: Cancelled notification with ID " + notificationId);
+
+        saveRemoveNotifications(context, notificationId, "cancelled");
+    }
+
 }
