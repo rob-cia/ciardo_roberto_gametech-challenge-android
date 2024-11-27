@@ -30,6 +30,8 @@ This plugin enables the scheduling and delivery of push notifications on Android
   - Uses `NotificationManager` to send the notification.
   - Supports Android API 26+ using `NotificationChannel`, while retaining backward compatibility for lower APIs.
 
+___
+
 ### *TAG: Android-Remove-Notifications*
 
 #### **Remove Notifications**
@@ -39,6 +41,8 @@ This plugin enables the scheduling and delivery of push notifications on Android
   - Utilizes `AlarmManager` to cancel pending alarms.
   - Cancels notifications based on their unique IDs (`NOTIFICATION_ID_BASE` and increments).
   - Ensures clean removal of all pending intents to avoid unintended notifications.
+
+___
 
 ### *TAG: Android-Touched-Notification-Data*
 
@@ -77,6 +81,8 @@ This plugin enables the scheduling and delivery of push notifications on Android
   - If `NotificationManager` is null, logs an error message.
   - Ensures that the channel is properly created to handle notifications on compatible devices.
 
+___
+
 ### *TAG: Android-List-Scheduled-Notifications*
 
 #### **On Startup**
@@ -88,6 +94,8 @@ This plugin enables the scheduling and delivery of push notifications on Android
   - Marks notifications with expired `triggerTime` as `"cancelled"`.
   - Preserves the state of notifications still valid.
   - Saves the updated notification list back to `SharedPreferences` for consistency.
+
+___
  
 ### *TAG: Unity-Save-Scheduled-Notification*
 
@@ -147,6 +155,40 @@ This plugin enables the scheduling and delivery of push notifications on Android
   - Commented out the logic to cancel scheduled notifications using `AlarmManager.cancel(PendingIntent)` for improved compatibility and reliability.
     - **Previous Implementation**: Used `PendingIntent.getBroadcast()` and `AlarmManager.cancel()` to remove scheduled alarms for notifications.
     - **Current Fix**: Instead of directly cancelling alarms, the system updates the notification status using the `saveRemoveNotifications` method, marking them as `"cancelled"` in the `SharedPreferences`.
+
+___
+
+### *TAG: Android-Remove-Scheduled-Notification*
+
+#### **Remove Notification by ID**
+- **Method**: `removeNotificationById(Context context, int notificationId)`
+- **Description**: Removes a specific notification by its ID and updates the schedule of the remaining notifications.
+- **Details**:
+  - **Calls**:
+    - `updateOrderOnRemoveNotification`: Adjusts the order and timing of notifications after marking the target notification as **cancelled**.
+    - `updateScheduledNotifications`: Refreshes the system alarms for the updated notification list.
+
+#### **Update Order on Remove Notification**
+- **Method**: `updateOrderOnRemoveNotification(Context context, int notificationId)`
+- **Description**: Updates the internal order and timing of notifications after removing one.
+- **Details**:
+  - Retrieves the current notification list from `SharedPreferences`.
+  - Marks the notification matching the given ID as **cancelled**.
+  - For subsequent notifications:
+    - Decreases their `triggerTime` by the interval (`INTERVAL_MS`).
+    - Adjusts their position index (`order`).
+  - Saves the updated list back to `SharedPreferences`.
+  - **Called By**: `removeNotificationById`.
+ 
+#### **Update Scheduled Notifications**
+- **Method**: `updateScheduledNotifications(Context context)`
+- **Description**: Reschedules all active notifications after an update.
+- **Details**:
+  - Fetches the updated notification list from `SharedPreferences`.
+  - For each notification:
+    - **Active (`running`)**: Schedules the notification with `AlarmManager.setExactAndAllowWhileIdle`.
+    - **Cancelled**: Cancels the pending alarm via `AlarmManager.cancel`.
+  - **Called By**: `removeNotificationById`.
 
 ---
 
