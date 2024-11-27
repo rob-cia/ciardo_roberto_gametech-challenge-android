@@ -290,42 +290,8 @@ public class NotificationPlugin {
     public static void removeNotificationById(Context context, int notificationId) {
         Log.d(TAG, "removeNotificationById: Attempting to remove notification with ID " + notificationId);
 
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) {
-            Log.e(TAG, "removeNotificationById: AlarmManager is null!");
-            return;
-        }
-
-        Intent intent = new Intent(context, NotificationReceiver.class);
-        intent.putExtra("notificationId", notificationId);
-
-        String[] notifications = getScheduledNotifications(context);
-        for (String notification : notifications) {
-            String[] parts = notification.split(":");
-            int storedNotificationId = Integer.parseInt(parts[0]);
-
-            if (storedNotificationId == notificationId) {
-                intent.putExtra("title", parts[1]);
-                intent.putExtra("description", parts[2]);
-                intent.putExtra("icon", Integer.parseInt(parts[3]));
-                break;
-            }
-        }
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                notificationId,
-                intent,
-                PendingIntent.FLAG_IMMUTABLE
-        );
-
-        alarmManager.cancel(pendingIntent);
-        Log.d(TAG, "removeNotificationById: Cancelled notification with ID " + notificationId);
-
-        saveRemoveNotifications(context, notificationId, "cancelled");
-
         updateOrderOnRemoveNotification(context, notificationId);
-        updateScheduleNotifications(context);
+        updateScheduledNotifications(context);
     }
 
     private static void updateOrderOnRemoveNotification(Context context, int notificationId) {
@@ -351,7 +317,7 @@ public class NotificationPlugin {
 
             if (Integer.parseInt(parts[0]) == notificationId) {
                 startDecrement = true;
-                parts[6] = String.valueOf(5);
+                parts[5] = "cancelled";//parts[6] = String.valueOf(5);
             } else {
                 if (startDecrement) {
                     parts[4] = String.valueOf(Long.parseLong(parts[4]) - INTERVAL_MS);
@@ -372,8 +338,8 @@ public class NotificationPlugin {
         editor.apply();
     }
 
-    public static void updateScheduleNotifications(Context context) {
-        Log.d(TAG, "updateScheduleNotifications: Scheduling " + NOTIFICATION_COUNT + " notifications...");
+    public static void updateScheduledNotifications(Context context) {
+        Log.d(TAG, "updateScheduledNotifications: Scheduling " + NOTIFICATION_COUNT + " notifications...");
 
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
@@ -383,22 +349,9 @@ public class NotificationPlugin {
             return;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Log.d(TAG, "removeNotifications: Deleting notification channel...");
-            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (notificationManager != null) {
-                notificationManager.deleteNotificationChannel(CHANNEL_ID);
-                Log.d(TAG, "removeNotifications: Notification channel deleted.");
-            } else {
-                Log.e(TAG, "removeNotifications: NotificationManager is null!");
-            }
-        }
-
-        createNotificationChannel(context);
-
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) {
-            Log.e(TAG, "updateScheduleNotifications: AlarmManager is null!");
+            Log.e(TAG, "updateScheduledNotifications: AlarmManager is null!");
             return;
         }
 
@@ -408,26 +361,28 @@ public class NotificationPlugin {
 
             String[] parts = notification.split(":");
 
+            Intent intent = new Intent(context, NotificationReceiver.class);
+            intent.putExtra("notificationId", parts[0]);
+            intent.putExtra("title", parts[1]);
+            intent.putExtra("description", parts[2]);
+            intent.putExtra("icon", parts[3]);
+
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    Integer.parseInt(parts[0]),
+                    intent,
+                    PendingIntent.FLAG_IMMUTABLE
+            );
+
             if (parts[5].equals("running")) {
-
-                Intent intent = new Intent(context, NotificationReceiver.class);
-                intent.putExtra("notificationId", parts[0]);
-                intent.putExtra("title", parts[1]);
-                intent.putExtra("description", parts[2]);
-                intent.putExtra("icon", parts[3]);
-
-                PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                        context,
-                        Integer.parseInt(parts[0]),
-                        intent,
-                        PendingIntent.FLAG_IMMUTABLE
-                );
-
                 long triggerTimeU = Long.parseLong(parts[4]);
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTimeU, pendingIntent);
 
-                Log.d(TAG, "updateScheduleNotifications: Scheduled notification " + (Integer.parseInt(parts[6])) + " at " + triggerTimeU);
+                Log.d(TAG, "updateScheduledNotifications: Scheduled notification " + (Integer.parseInt(parts[6])) + " at " + triggerTimeU);
 
+            } else {
+                alarmManager.cancel(pendingIntent);
+                Log.d(TAG, "updateScheduledNotifications: Canceled notification " + (Integer.parseInt(parts[6])));
             }
         }
 
