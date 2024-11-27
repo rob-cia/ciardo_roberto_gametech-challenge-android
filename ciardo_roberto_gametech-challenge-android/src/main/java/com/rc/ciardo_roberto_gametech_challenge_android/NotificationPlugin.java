@@ -84,7 +84,7 @@ public class NotificationPlugin {
             Log.d(TAG, "scheduleNotifications: Scheduled notification " + (i + 1) + " at " + triggerTimeU);
 
             // unity-list-scheduled-notification: save the scheduled notification in the SharedPreferences
-            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], i, triggerTimeU, "running");
+            saveScheduledNotification(context, NOTIFICATION_ID_BASE + i, TITLES[i], DESCRIPTIONS[i], i, triggerTimeU, "running", i+1);
         }
     }
 
@@ -183,7 +183,7 @@ public class NotificationPlugin {
         editor.apply();
     }
 
-    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime, String status) {
+    private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime, String status, int order) {
         Log.d(TAG, "Preparing to save schedule notification..");
 
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -210,6 +210,7 @@ public class NotificationPlugin {
                         parts[3] = String.valueOf(iconId);
                         parts[4] = String.valueOf(triggerTime);
                         parts[5] = status;
+                        parts[6] = String.valueOf(order);
                         notification = String.join(":", parts);
                         notificationFound = true;
                     }
@@ -229,14 +230,14 @@ public class NotificationPlugin {
                     updatedNotifications.append(";");
                 }
                 Log.d(TAG, "Add notification " + notificationId + " - len (" + updatedNotifications.length() + ")");
-                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime + ":" + status);
+                updatedNotifications.append(notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime + ":" + status + ":" + order);
             }
 
             // Update notification list
             scheduledNotifications = updatedNotifications.toString();
         } else {
             Log.d(TAG, "Add first notification " + notificationId);
-            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime + ":" + status;
+            scheduledNotifications = notificationId + ":" + title + ":" + description + ":" + iconId + ":" + triggerTime + ":" + status + ":" + order;
         }
 
         // Save the new scheduled notification list
@@ -322,6 +323,113 @@ public class NotificationPlugin {
         Log.d(TAG, "removeNotificationById: Cancelled notification with ID " + notificationId);
 
         saveRemoveNotifications(context, notificationId, "cancelled");
+
+        updateOrderOnRemoveNotification(context, notificationId);
+        updateScheduleNotifications(context);
     }
 
+    private static void updateOrderOnRemoveNotification(Context context, int notificationId) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (scheduledNotifications.isEmpty()) {
+            Log.e("NotificationManager", "No scheduled notifications found.");
+            return;
+        }
+
+
+        String[] notifications = scheduledNotifications.split(";");
+
+        StringBuilder updatedNotifications = new StringBuilder();
+
+        boolean startDecrement = false;
+        for (String notification : notifications) {
+
+            String[] parts = notification.split(":");
+
+            if (Integer.parseInt(parts[0]) == notificationId) {
+                startDecrement = true;
+                parts[6] = String.valueOf(5);
+            } else {
+                if (startDecrement) {
+                    parts[4] = String.valueOf(Long.parseLong(parts[4]) - INTERVAL_MS);
+                    parts[6] = String.valueOf(Integer.parseInt(parts[6]) - 1);
+                }
+            }
+
+            String updatedNotification = String.join(":", parts);
+
+            if (updatedNotifications.length() > 0) {
+                updatedNotifications.append(";");
+            }
+            updatedNotifications.append(updatedNotification);
+
+        }
+
+        editor.putString(SCHEDULED_NOTIFICATIONS_KEY, updatedNotifications.toString());
+        editor.apply();
+    }
+
+    public static void updateScheduleNotifications(Context context) {
+        Log.d(TAG, "updateScheduleNotifications: Scheduling " + NOTIFICATION_COUNT + " notifications...");
+
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (scheduledNotifications.isEmpty()) {
+            Log.e("NotificationPlugin", "No scheduled notifications found.");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Log.d(TAG, "removeNotifications: Deleting notification channel...");
+            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager != null) {
+                notificationManager.deleteNotificationChannel(CHANNEL_ID);
+                Log.d(TAG, "removeNotifications: Notification channel deleted.");
+            } else {
+                Log.e(TAG, "removeNotifications: NotificationManager is null!");
+            }
+        }
+
+        createNotificationChannel(context);
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            Log.e(TAG, "updateScheduleNotifications: AlarmManager is null!");
+            return;
+        }
+
+        String[] notifications = scheduledNotifications.split(";");
+
+        for (String notification : notifications) {
+
+            String[] parts = notification.split(":");
+
+            if (parts[5].equals("running")) {
+
+                Intent intent = new Intent(context, NotificationReceiver.class);
+                intent.putExtra("notificationId", parts[0]);
+                intent.putExtra("title", parts[1]);
+                intent.putExtra("description", parts[2]);
+                intent.putExtra("icon", parts[3]);
+
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        Integer.parseInt(parts[0]),
+                        intent,
+                        PendingIntent.FLAG_IMMUTABLE
+                );
+
+                long triggerTimeU = Long.parseLong(parts[4]);
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTimeU, pendingIntent);
+
+                Log.d(TAG, "updateScheduleNotifications: Scheduled notification " + (Integer.parseInt(parts[6])) + " at " + triggerTimeU);
+
+            }
+        }
+
+    }
 }
