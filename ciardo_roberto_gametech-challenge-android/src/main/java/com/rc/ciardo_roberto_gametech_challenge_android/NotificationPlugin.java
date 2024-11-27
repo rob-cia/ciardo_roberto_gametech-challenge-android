@@ -15,7 +15,7 @@ public class NotificationPlugin {
     private static final String TAG = "NotificationPlugin";
     private static final int NOTIFICATION_ID_BASE = 1000;
     private static final int NOTIFICATION_COUNT = 5;
-    private static final long INTERVAL_MS = 10 * 1000;
+    private static final long INTERVAL_MS = 60 * 1000;
     private static final String CHANNEL_ID = "NotificationChannel";
     private static final String CHANNEL_NAME = "Scheduled Notifications";
 
@@ -338,7 +338,7 @@ public class NotificationPlugin {
         editor.apply();
     }
 
-    public static void updateScheduledNotifications(Context context) {
+    private static void updateScheduledNotifications(Context context) {
         Log.d(TAG, "updateScheduledNotifications: Scheduling " + NOTIFICATION_COUNT + " notifications...");
 
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
