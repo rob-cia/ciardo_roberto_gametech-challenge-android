@@ -329,7 +329,7 @@ public class NotificationPlugin {
             } else {
                 if (startDecrement) {
                     parts[4] = String.valueOf(Long.parseLong(parts[4]) - INTERVAL_MS);
-                    parts[6] = String.valueOf(Integer.parseInt(parts[6]) - 1);
+                    //parts[6] = String.valueOf(Integer.parseInt(parts[6]) - 1);
                 }
             }
 
