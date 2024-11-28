@@ -43,6 +43,14 @@ public class NotificationPlugin {
             android.R.drawable.ic_menu_info_details
     };
 
+    private static final int NOTIFICATION_ID = 0;
+    private static final int TITLE = 1;
+    private static final int DESCRIPTION = 2;
+    private static final int ICON_ID = 3;
+    private static final int TRIGGER_TIME = 4;
+    private static final int STATUS = 5;
+    private static final int ORDER = 6;
+
     // unity-list-scheduled-notification
     private static final String PREFS_NAME = "NotificationPrefs";
     private static final String SCHEDULED_NOTIFICATIONS_KEY = "ScheduledNotifications";
@@ -387,4 +395,66 @@ public class NotificationPlugin {
         }
 
     }
+
+    // android-change-notifications-schedule
+    public static void updateOrderOnDragAndDrop(Context context, int[] notificationIds) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
+
+        if (scheduledNotifications.isEmpty()) {
+            Log.e("NotificationPlugin", "No scheduled notifications found.");
+            return;
+        }
+
+        int offsetOrder = 0;
+
+        for (int notificationId : notificationIds) {
+            if (notificationId == 0)
+                offsetOrder++;
+        }
+
+        String[] notifications = scheduledNotifications.split(";");
+
+        StringBuilder updatedNotifications = new StringBuilder();
+
+        for (String notification : notifications) {
+
+            String[] parts = notification.split(":");
+
+            for (int pos = 0; pos < notificationIds.length; pos++) {
+
+                if (Integer.parseInt(parts[NOTIFICATION_ID]) == notificationIds[pos]) {
+                    int newOrder = pos + 1 + offsetOrder;
+                    long newTriggerTime = Long.parseLong(parts[TRIGGER_TIME]) + ((newOrder - Integer.parseInt(parts[ORDER])) * INTERVAL_MS); // aggiorno il triggerTime
+                    long differenceTime = newTriggerTime - System.currentTimeMillis();
+
+                    Log.d("NotificationPlugin", "NOTIFICATION ID_____" + parts[NOTIFICATION_ID] + " - oldPos " + parts[ORDER] + " - newPos " + newOrder);
+                    Log.d("NotificationPlugin", "OldTriggerTime " + parts[TRIGGER_TIME]);
+                    Log.d("NotificationPlugin", "milliseconds to add " + ((long) (newOrder - Integer.parseInt(parts[ORDER])) * 10 * 1000));
+                    Log.d("NotificationPlugin", "NewTriggerTime = " + newTriggerTime + " - Difference = " + differenceTime);
+
+                    parts[TRIGGER_TIME] = String.valueOf(newTriggerTime);
+                    parts[ORDER] = String.valueOf(newOrder);
+                }
+            }
+
+
+            String updatedNotification = String.join(":", parts);
+
+            if (updatedNotifications.length() > 0) {
+                updatedNotifications.append(";");
+            }
+            updatedNotifications.append(updatedNotification);
+        }
+
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(SCHEDULED_NOTIFICATIONS_KEY, updatedNotifications.toString());
+        editor.apply();
+
+        Log.d("NotificationPlugin", "Notifications reordered successfully.");
+        Log.d("NotificationPlugin", "Result: " + updatedNotifications.toString());
+
+        updateScheduledNotifications(context);
+    }
+
 }
