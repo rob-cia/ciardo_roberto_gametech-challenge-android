@@ -189,6 +189,65 @@ ___
     - **Active (`running`)**: Schedules the notification with `AlarmManager.setExactAndAllowWhileIdle`.
     - **Cancelled**: Cancels the pending alarm via `AlarmManager.cancel`.
   - **Called By**: `removeNotificationById`.
+ 
+___
+
+### *TAG: Android-Change-Notifications-Schedule*
+
+#### **Update Order on Drag and Drop** (NEW)
+- **Method**: `updateOrderOnDragAndDrop(Context context, int[] notificationIds)`
+- **Description**: Reorders scheduled notifications based on the new order provided by drag-and-drop actions and updates their trigger times accordingly.
+- **Parameters**:
+    - `Context context`: Android context for accessing `SharedPreferences` and scheduling notifications.
+    - `int[] notificationIds`: Array of notification IDs representing the new order after drag-and-drop.
+- **Details**:
+  - Retrieves the scheduled notifications from `SharedPreferences` using the key `SCHEDULED_NOTIFICATIONS_KEY`.
+  - Calculates new trigger times (`TRIGGER_TIME`) and order (`ORDER`) for each notification:
+    - The new order is determined by the position of the ID in the `notificationIds` array.
+    - Adjusts the trigger time based on the order change, ensuring notifications fire at the correct intervals.
+  - Updates and saves the modified notification list back to `SharedPreferences`.
+  - Calls `updateScheduledNotifications(context)` to apply the changes to the system's `AlarmManager`.
+
+#### **Update Order on Remove Notification** (UPDATED)
+- **Method**: `updateOrderOnRemoveNotification(Context context, int notificationId)`
+- **Description**: Updates the internal order and timing of notifications after removing one.
+- **Parameters**:
+    - `Context context`: Android context for accessing `SharedPreferences`.
+    - `int notificationId`: The ID of the notification to be removed.
+- **Details**:
+  - Retrieves the current notification list from `SharedPreferences`.
+  - Marks the notification matching the given ID as **cancelled**.
+  - Adjusts the `ORDER` and `TRIGGER_TIME` of subsequent notifications:
+    - Notifications with an order greater than or equal to the removed notification's order are decremented.
+    - The trigger times are adjusted by subtracting the interval time (`INTERVAL_MS`) to maintain proper scheduling.
+  - Saves the updated notification list back to `SharedPreferences`.
+
+#### **Save Remove Notifications** (UPDATED)
+- **Method**: `saveRemoveNotifications(Context context, int notificationId, String status)`
+- **Description**: Marks a notification as removed and updates the order of subsequent notifications in the list.
+- **Parameters**:
+    - `Context context`: Android context for accessing `SharedPreferences`.
+    - `int notificationId`: The ID of the notification to be marked as removed.
+    - `String status`: The status to be assigned to the removed notification (e.g., `"cancelled"`).
+- **Details**:
+  - Retrieves the scheduled notifications from `SharedPreferences` using the key `SCHEDULED_NOTIFICATIONS_KEY`.
+  - Finds the notification with the given `notificationId` and updates its status to `"cancelled"`.
+  - Adjusts the `ORDER` of notifications following the removed one:
+    - Decrements the order of subsequent notifications to maintain sequential order.
+  - Constructs the updated list of notifications and saves it back to `SharedPreferences`.
+
+#### **On Startup** (UPDATED)
+- **Method**: `onStartup(Context context)`
+- **Description**: Updates the state of scheduled notifications upon application startup by marking expired notifications as canceled.
+- **Parameters**:
+    - `Context context`: Android context for accessing `SharedPreferences`.
+- **Details**:
+  - Retrieves the scheduled notifications from `SharedPreferences` using the key `SCHEDULED_NOTIFICATIONS_KEY`.
+  - Iterates through all scheduled notifications to check their `TRIGGER_TIME` against the current system time.
+  - Identifies notifications with a status of `"running"` whose trigger time has expired.
+  - Calls the `saveRemoveNotifications` method for each expired notification to:
+    - Mark it as `"cancelled"`.
+    - Update the order of subsequent notifications in the list.
 
 ---
 
