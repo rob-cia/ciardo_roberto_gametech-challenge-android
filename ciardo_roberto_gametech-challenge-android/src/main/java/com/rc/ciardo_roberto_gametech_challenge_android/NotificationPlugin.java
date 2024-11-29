@@ -10,6 +10,9 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class NotificationPlugin {
 
     private static final String TAG = "NotificationPlugin";
@@ -156,39 +159,29 @@ public class NotificationPlugin {
     // unity-list-scheduled-notification : called by Unity when the app is opened
     private static void onStartup(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
 
         String scheduledNotifications = sharedPreferences.getString(SCHEDULED_NOTIFICATIONS_KEY, "");
 
         if (!scheduledNotifications.isEmpty()) {
             String[] notifications = scheduledNotifications.split(";");
 
-            StringBuilder updatedNotifications = new StringBuilder();
+            // android-change-notifications-schedule : Search expired notifications and mark as cancelled/decrement order
+            List<Integer> expiredNotificationId = new ArrayList<>();
 
-            Log.d(TAG, "startup: Searching notification to update..");
+            Log.d(TAG, "startup: Searching for expired notifications to update...");
+
             for (String notification : notifications) {
                 String[] parts = notification.split(":");
 
-                long triggerTime = Long.parseLong(parts[4]);
-
-                if (triggerTime <= System.currentTimeMillis()) {
-                    parts[5] = "cancelled";
-                    notification = String.join(":", parts);
+                if (Long.parseLong(parts[TRIGGER_TIME]) <= System.currentTimeMillis() && parts[STATUS].equals("running")) {
+                    expiredNotificationId.add(Integer.parseInt(parts[NOTIFICATION_ID]));
                 }
-
-                if (updatedNotifications.length() > 0) {
-                    updatedNotifications.append(";");
-                }
-                updatedNotifications.append(notification);
             }
 
-            // Update notification list
-            scheduledNotifications = updatedNotifications.toString();
+            for (int notificationId : expiredNotificationId) {
+                saveRemoveNotifications(context, notificationId, "cancelled");
+            }
         }
-
-        // Save the new scheduled notification list
-        editor.putString(SCHEDULED_NOTIFICATIONS_KEY, scheduledNotifications);
-        editor.apply();
     }
 
     private static void saveScheduledNotification(Context context, int notificationId, String title, String description, int iconId, long triggerTime, String status, int order) {
@@ -263,19 +256,37 @@ public class NotificationPlugin {
             String[] notifications = scheduledNotifications.split(";");
             StringBuilder updatedNotifications = new StringBuilder();
 
+            // android-change-notifications-schedule : The notification order is searched through the id
+            int notificationOrder = 0;
             for (String notification : notifications) {
                 String[] parts = notification.split(":");
-                int storedNotificationId = Integer.parseInt(parts[0]);
-
-                if (storedNotificationId == notificationId) {
-                    parts[5] = status;
-                    notification = String.join(":", parts);
+                if (Integer.parseInt(parts[0]) == notificationId) {
+                    notificationOrder = Integer.parseInt(parts[ORDER]);
+                    parts[STATUS] = "cancelled";
+                    break;
                 }
+            }
+
+            // android-change-notifications-schedule : Decrement orders following the one previously selected
+            for (String notification : notifications) {
+
+                String[] parts = notification.split(":");
+
+                if (Integer.parseInt(parts[0]) == notificationId) {
+                    parts[STATUS] = "cancelled";
+                }
+
+                if (Integer.parseInt(parts[ORDER]) >= notificationOrder) {
+                    parts[ORDER] = String.valueOf( (Integer.parseInt(parts[ORDER]) - 1) );
+                }
+
+                String updatedNotification = String.join(":", parts);
 
                 if (updatedNotifications.length() > 0) {
                     updatedNotifications.append(";");
                 }
-                updatedNotifications.append(notification);
+                updatedNotifications.append(updatedNotification);
+
             }
 
             editor.putString(SCHEDULED_NOTIFICATIONS_KEY, updatedNotifications.toString());
@@ -318,19 +329,31 @@ public class NotificationPlugin {
 
         StringBuilder updatedNotifications = new StringBuilder();
 
-        boolean startDecrement = false;
+        // android-change-notifications-schedule : The notification order is searched through the id
+        int notificationOrder = 0;
+        for (String notification : notifications) {
+            String[] parts = notification.split(":");
+            if (Integer.parseInt(parts[0]) == notificationId) {
+                notificationOrder = Integer.parseInt(parts[ORDER]);
+                parts[STATUS] = "cancelled";
+                break;
+            }
+        }
+
+        // android-change-notifications-schedule : Decrement orders and TriggerTimes following the one previously selected
         for (String notification : notifications) {
 
             String[] parts = notification.split(":");
 
             if (Integer.parseInt(parts[0]) == notificationId) {
-                startDecrement = true;
-                parts[5] = "cancelled";//parts[6] = String.valueOf(5);
-            } else {
-                if (startDecrement) {
-                    parts[4] = String.valueOf(Long.parseLong(parts[4]) - INTERVAL_MS);
-                    //parts[6] = String.valueOf(Integer.parseInt(parts[6]) - 1);
-                }
+                parts[STATUS] = "cancelled";
+            }
+
+            if (Integer.parseInt(parts[ORDER]) >= notificationOrder) {
+                //startDecrement = true;
+                //parts[5] = "cancelled";//parts[6] = String.valueOf(5);
+                parts[TRIGGER_TIME] = String.valueOf(Long.parseLong(parts[TRIGGER_TIME]) - INTERVAL_MS);
+                parts[ORDER] = String.valueOf( (Integer.parseInt(parts[ORDER]) - 1) );
             }
 
             String updatedNotification = String.join(":", parts);
@@ -424,7 +447,7 @@ public class NotificationPlugin {
             for (int pos = 0; pos < notificationIds.length; pos++) {
 
                 if (Integer.parseInt(parts[NOTIFICATION_ID]) == notificationIds[pos]) {
-                    int newOrder = pos + 1 + offsetOrder;
+                    int newOrder = pos + 1;// + offsetOrder;
                     long newTriggerTime = Long.parseLong(parts[TRIGGER_TIME]) + ((newOrder - Integer.parseInt(parts[ORDER])) * INTERVAL_MS); // aggiorno il triggerTime
                     long differenceTime = newTriggerTime - System.currentTimeMillis();
 
