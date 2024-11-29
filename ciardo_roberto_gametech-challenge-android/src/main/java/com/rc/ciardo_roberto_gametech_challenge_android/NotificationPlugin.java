@@ -202,16 +202,16 @@ public class NotificationPlugin {
             for (String notification : notifications) {
                 String[] parts = notification.split(":");
                 try {
-                    int storedNotificationId = Integer.parseInt(parts[0]);
+                    int storedNotificationId = Integer.parseInt(parts[NOTIFICATION_ID]);
 
                     if (storedNotificationId == notificationId) {
                         Log.d(TAG, "Notification " + notificationId + " already present, update starting");
-                        parts[1] = title;
-                        parts[2] = description;
-                        parts[3] = String.valueOf(iconId);
-                        parts[4] = String.valueOf(triggerTime);
-                        parts[5] = status;
-                        parts[6] = String.valueOf(order);
+                        parts[TITLE] = title;
+                        parts[DESCRIPTION] = description;
+                        parts[ICON_ID] = String.valueOf(iconId);
+                        parts[TRIGGER_TIME] = String.valueOf(triggerTime);
+                        parts[STATUS] = status;
+                        parts[ORDER] = String.valueOf(order);
                         notification = String.join(":", parts);
                         notificationFound = true;
                     }
@@ -260,7 +260,7 @@ public class NotificationPlugin {
             int notificationOrder = 0;
             for (String notification : notifications) {
                 String[] parts = notification.split(":");
-                if (Integer.parseInt(parts[0]) == notificationId) {
+                if (Integer.parseInt(parts[NOTIFICATION_ID]) == notificationId) {
                     notificationOrder = Integer.parseInt(parts[ORDER]);
                     parts[STATUS] = "cancelled";
                     break;
@@ -272,7 +272,7 @@ public class NotificationPlugin {
 
                 String[] parts = notification.split(":");
 
-                if (Integer.parseInt(parts[0]) == notificationId) {
+                if (Integer.parseInt(parts[NOTIFICATION_ID]) == notificationId) {
                     parts[STATUS] = "cancelled";
                 }
 
@@ -333,7 +333,7 @@ public class NotificationPlugin {
         int notificationOrder = 0;
         for (String notification : notifications) {
             String[] parts = notification.split(":");
-            if (Integer.parseInt(parts[0]) == notificationId) {
+            if (Integer.parseInt(parts[NOTIFICATION_ID]) == notificationId) {
                 notificationOrder = Integer.parseInt(parts[ORDER]);
                 parts[STATUS] = "cancelled";
                 break;
@@ -345,13 +345,13 @@ public class NotificationPlugin {
 
             String[] parts = notification.split(":");
 
-            if (Integer.parseInt(parts[0]) == notificationId) {
+            if (Integer.parseInt(parts[NOTIFICATION_ID]) == notificationId) {
                 parts[STATUS] = "cancelled";
             }
 
             if (Integer.parseInt(parts[ORDER]) >= notificationOrder) {
                 //startDecrement = true;
-                //parts[5] = "cancelled";//parts[6] = String.valueOf(5);
+                //parts[STATUS] = "cancelled";//parts[ORDER] = String.valueOf(5);
                 parts[TRIGGER_TIME] = String.valueOf(Long.parseLong(parts[TRIGGER_TIME]) - INTERVAL_MS);
                 parts[ORDER] = String.valueOf( (Integer.parseInt(parts[ORDER]) - 1) );
             }
@@ -393,27 +393,27 @@ public class NotificationPlugin {
             String[] parts = notification.split(":");
 
             Intent intent = new Intent(context, NotificationReceiver.class);
-            intent.putExtra("notificationId", parts[0]);
-            intent.putExtra("title", parts[1]);
-            intent.putExtra("description", parts[2]);
-            intent.putExtra("icon", parts[3]);
+            intent.putExtra("notificationId", parts[NOTIFICATION_ID]);
+            intent.putExtra("title", parts[TITLE]);
+            intent.putExtra("description", parts[DESCRIPTION]);
+            intent.putExtra("icon", parts[ICON_ID]);
 
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     context,
-                    Integer.parseInt(parts[0]),
+                    Integer.parseInt(parts[NOTIFICATION_ID]),
                     intent,
                     PendingIntent.FLAG_IMMUTABLE
             );
 
-            if (parts[5].equals("running")) {
-                long triggerTimeU = Long.parseLong(parts[4]);
+            if (parts[STATUS].equals("running")) {
+                long triggerTimeU = Long.parseLong(parts[TRIGGER_TIME]);
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTimeU, pendingIntent);
 
-                Log.d(TAG, "updateScheduledNotifications: Scheduled notification " + (Integer.parseInt(parts[6])) + " at " + triggerTimeU);
+                Log.d(TAG, "updateScheduledNotifications: Scheduled notification " + (Integer.parseInt(parts[ORDER])) + " at " + triggerTimeU);
 
             } else {
                 alarmManager.cancel(pendingIntent);
-                Log.d(TAG, "updateScheduledNotifications: Canceled notification " + (Integer.parseInt(parts[6])));
+                Log.d(TAG, "updateScheduledNotifications: Canceled notification " + (Integer.parseInt(parts[ORDER])));
             }
         }
 
